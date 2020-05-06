@@ -1,25 +1,196 @@
-import React from 'react';
-import logo from './logo.svg';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
+import { Link, useParams, withRouter } from 'react-router-dom';
+import store from 'store';
+import firebase from './firebase';
+
 import './App.css';
+import Header from './components/Header';
+
+function Login() {
+  const doLogin = () => {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
+
+    firebase
+      .auth()
+      .signInWithPopup(provider)
+      .then(function (result) {
+        store.set('isLogged', true);
+      })
+      .catch(function (error) {
+        console.log(error);
+      });
+  };
+
+  useEffect(() => {
+    if (!store.get('isLogged')) {
+      doLogin();
+    }
+  });
+
+  return <></>;
+}
+
+function PrivateRoute(props: any) {
+  const [isLogged, setIsLogged] = useState(false);
+
+  useEffect(() => {
+    setIsLogged(store.get('isLogged'));
+  }, []);
+
+  return (
+    <Route
+      {...props}
+      render={() => (isLogged ? props.children : <Login></Login>)}
+    ></Route>
+  );
+}
+
+function Note(props: any) {
+  return (
+    <div {...props} className="notes__item" key={props.id}>
+      <h5 className="notes__title">{props.title}</h5>
+      <p className="notes__body">{props.body}</p>
+    </div>
+  );
+}
+
+const Notes = withRouter((props: any) => {
+  const [notes, setNotes] = useState<any[]>([]);
+
+  const gotoDetail = (id: string) => () => {
+    console.log(id);
+    props.history.push(`/notes/${id}`);
+  };
+
+  useEffect(() => {
+    const notesRef = firebase.firestore().collection('notes');
+    notesRef.get().then((notes) => {
+      const mappedNotes = notes.docs.map((doc) => {
+        return {
+          id: doc.id,
+          ...doc.data(),
+        };
+      });
+      setNotes(mappedNotes as any);
+    });
+  }, []);
+
+  return (
+    <div className="notes">
+      {notes.map((note) => (
+        <Note onClick={gotoDetail(note.id)} key={note.id} {...note} />
+      ))}
+    </div>
+  );
+});
+
+function Editor(props: any) {
+  useEffect(() => {
+    let SimpleMDE;
+    if ((window as any).SimpleMDE) {
+      SimpleMDE = (window as any).SimpleMDE;
+      const editor = new SimpleMDE({
+        autofocus: true,
+        autosave: {
+          enabled: true,
+          delay: 3000,
+          uniqueId: 'editor',
+        },
+        toolbar: false,
+        status: false,
+      });
+      editor.codemirror.on('change', function () {
+        if (props.onChanged && typeof props.onChanged === 'function') {
+          props.onChanged(editor.value());
+        }
+      });
+    }
+  });
+
+  return (
+    <div>
+      <textarea defaultValue={props.content} />
+    </div>
+  );
+}
+
+function DetailNote() {
+  const { id } = useParams();
+  const [note, setNote] = useState<any>(null);
+  let tmpNotes: string = '';
+
+  const saveNote = () => {
+    if (tmpNotes.trim() === '') {
+      return;
+    }
+    firebase
+      .firestore()
+      .collection('notes')
+      .doc(id)
+      .set(
+        {
+          body: tmpNotes,
+        },
+        { merge: true }
+      )
+      .catch((error) => {
+        alert(`Error writing note: ${error}`);
+      });
+  };
+
+  const onChanged = (value: string) => {
+    tmpNotes = value;
+  };
+
+  useEffect(() => {
+    const noteRef = firebase.firestore().collection('notes').doc(id);
+    noteRef.get().then((note) => {
+      setNote({
+        id: note.id,
+        ...note.data(),
+      });
+    });
+  }, [id]);
+
+  return (
+    <div>
+      {note ? (
+        <>
+          <button onClick={saveNote}>Done</button>
+          <Editor onChanged={onChanged} content={note.body}></Editor>
+        </>
+      ) : (
+        ''
+      )}
+    </div>
+  );
+}
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Router>
+      <div className="App">
+        <Switch>
+          <PrivateRoute exact path="/">
+            <Header>Notes</Header>
+            <Notes />
+          </PrivateRoute>
+          <PrivateRoute path="/notes/:id">
+            <Header>
+              <nav>
+                <Link to="/">
+                  <img src="/assets/chevron-left.svg" alt="" />
+                  <h5>Notes</h5>
+                </Link>
+              </nav>
+            </Header>
+            <DetailNote />
+          </PrivateRoute>
+        </Switch>
+      </div>
+    </Router>
   );
 }
 
