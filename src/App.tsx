@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
-import { Link, useParams, withRouter } from 'react-router-dom';
+import { Link, Redirect, useParams, withRouter } from 'react-router-dom';
 import store from 'store';
 import firebase from './firebase';
 
@@ -8,6 +8,7 @@ import './App.css';
 import Header from './components/Header';
 
 function Login() {
+  const [isLogged, setIsLogged] = useState(false);
   const doLogin = () => {
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
@@ -17,6 +18,7 @@ function Login() {
       .signInWithPopup(provider)
       .then(function (result) {
         store.set('isLogged', true);
+        setIsLogged(true);
       })
       .catch(function (error) {
         console.log(error);
@@ -29,20 +31,26 @@ function Login() {
     }
   });
 
-  return <></>;
+  return isLogged ? <Redirect to="/" /> : <>login</>;
 }
 
-function PrivateRoute(props: any) {
+function PrivateRoute({ component: Component, ...rest }: any) {
   const [isLogged, setIsLogged] = useState(false);
 
   useEffect(() => {
-    setIsLogged(store.get('isLogged'));
+    setIsLogged(store.get('isLogged') || false);
   }, []);
 
   return (
     <Route
-      {...props}
-      render={() => (isLogged ? props.children : <Login></Login>)}
+      {...rest}
+      render={(props) =>
+        store.get('isLogged') || false ? (
+          <Component {...props} />
+        ) : (
+          <Login></Login>
+        )
+      }
     ></Route>
   );
 }
@@ -173,21 +181,8 @@ function App() {
     <Router>
       <div className="App">
         <Switch>
-          <PrivateRoute exact path="/">
-            <Header>Notes</Header>
-            <Notes />
-          </PrivateRoute>
-          <PrivateRoute path="/notes/:id">
-            <Header>
-              <nav>
-                <Link to="/">
-                  <img src="/assets/chevron-left.svg" alt="" />
-                  <h5>Notes</h5>
-                </Link>
-              </nav>
-            </Header>
-            <DetailNote />
-          </PrivateRoute>
+          <PrivateRoute exact path="/" component={Notes} />
+          <PrivateRoute path="/notes/:id" component={DetailNote} />
         </Switch>
       </div>
     </Router>
