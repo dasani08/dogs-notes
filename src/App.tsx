@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
-import { Link, Redirect, useParams, withRouter } from 'react-router-dom';
+import { BrowserRouter as Router, Switch, Route, Link } from 'react-router-dom';
+import { Redirect, useParams, withRouter } from 'react-router-dom';
 import store from 'store';
 import firebase from './firebase';
 
 import './App.css';
-import Header from './components/Header';
 
 function Login() {
   const [isLogged, setIsLogged] = useState(false);
@@ -35,12 +34,6 @@ function Login() {
 }
 
 function PrivateRoute({ component: Component, ...rest }: any) {
-  const [isLogged, setIsLogged] = useState(false);
-
-  useEffect(() => {
-    setIsLogged(store.get('isLogged') || false);
-  }, []);
-
   return (
     <Route
       {...rest}
@@ -54,6 +47,18 @@ function PrivateRoute({ component: Component, ...rest }: any) {
     ></Route>
   );
 }
+
+const Header = (props: any) => {
+  return <header>{props.children}</header>;
+};
+
+const Nav = (props: any) => {
+  return <nav>{props.children}</nav>;
+};
+
+const Footer = (props: any) => {
+  return <footer>{props.children}</footer>;
+};
 
 function Note(props: any) {
   return (
@@ -86,11 +91,23 @@ const Notes = withRouter((props: any) => {
   }, []);
 
   return (
-    <div className="notes">
-      {notes.map((note) => (
-        <Note onClick={gotoDetail(note.id)} key={note.id} {...note} />
-      ))}
-    </div>
+    <>
+      <Header>
+        <Nav>
+          <b>Notes</b>
+        </Nav>
+      </Header>
+      <div className="notes">
+        {notes.map((note) => (
+          <Note onClick={gotoDetail(note.id)} key={note.id} {...note} />
+        ))}
+      </div>
+      <Footer>
+        <Link to="/notes/add">
+          <img src="/assets/edit.svg" alt="" />
+        </Link>
+      </Footer>
+    </>
   );
 });
 
@@ -101,11 +118,6 @@ function Editor(props: any) {
       SimpleMDE = (window as any).SimpleMDE;
       const editor = new SimpleMDE({
         autofocus: true,
-        autosave: {
-          enabled: true,
-          delay: 3000,
-          uniqueId: 'editor',
-        },
         toolbar: false,
         status: false,
       });
@@ -123,6 +135,44 @@ function Editor(props: any) {
     </div>
   );
 }
+
+const AddNote = withRouter((props) => {
+  let note = '';
+  const addNote = () => {
+    if (note.trim() === '') {
+      return;
+    }
+    firebase
+      .firestore()
+      .collection('notes')
+      .add({
+        body: note,
+      })
+      .then(() => props.history.push('/'))
+      .catch((error) => {
+        alert(`Error writing note: ${error}`);
+      });
+  };
+
+  return (
+    <div>
+      <Header>
+        <Nav>
+          <Link to="/">
+            <img src="/assets/chevron-left.svg" alt="" />
+            <b>Notes</b>
+          </Link>
+        </Nav>
+        <Nav>
+          <button onClick={addNote}>
+            <b>Done</b>
+          </button>
+        </Nav>
+      </Header>
+      <Editor onChanged={(value: string) => (note = value)}></Editor>
+    </div>
+  );
+});
 
 function DetailNote() {
   const { id } = useParams();
@@ -143,6 +193,7 @@ function DetailNote() {
         },
         { merge: true }
       )
+      .then(() => alert('Saved!'))
       .catch((error) => {
         alert(`Error writing note: ${error}`);
       });
@@ -164,9 +215,21 @@ function DetailNote() {
 
   return (
     <div>
+      <Header>
+        <Nav>
+          <Link to="/">
+            <img src="/assets/chevron-left.svg" alt="" />
+            <b>Notes</b>
+          </Link>
+        </Nav>
+        <Nav>
+          <button onClick={saveNote}>
+            <b>Done</b>
+          </button>
+        </Nav>
+      </Header>
       {note ? (
         <>
-          <button onClick={saveNote}>Done</button>
           <Editor onChanged={onChanged} content={note.body}></Editor>
         </>
       ) : (
@@ -182,6 +245,7 @@ function App() {
       <div className="App">
         <Switch>
           <PrivateRoute exact path="/" component={Notes} />
+          <PrivateRoute path="/notes/add" component={AddNote} />
           <PrivateRoute path="/notes/:id" component={DetailNote} />
         </Switch>
       </div>

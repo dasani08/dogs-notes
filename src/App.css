@@ -9,11 +9,8 @@ p {
 }
 
 .App {
-  /* padding: 0 20px;
-  width: 100%;
-  height: 100%; */
   padding-top: 44px;
-  padding: 44px 10px 0 10px;
+  padding: 50px 20px 0 20px;
 }
 
 header {
@@ -25,17 +22,28 @@ header {
   top: 0;
   left: 0;
   background-color: #fff;
-  z-index: 1;
+  z-index: 999;
+  font-size: 16px;
 }
 
 header nav {
   display: flex;
-  padding: 0 10px;
+  padding: 0 20px;
 }
 
 header nav a {
   text-decoration: none;
   display: flex;
+  line-height: 24px;
+}
+
+header a,
+header button {
+  display: flex;
+  font-size: 16px;
+  color: #3597ec;
+  text-decoration: none;
+  line-height: 24px;
 }
 
 footer {
