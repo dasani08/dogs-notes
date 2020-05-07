@@ -30,7 +30,11 @@ function Login() {
     }
   });
 
-  return isLogged ? <Redirect to="/" /> : <>login</>;
+  return isLogged ? (
+    <Redirect to="/" />
+  ) : (
+    <button onClick={doLogin}>Login</button>
+  );
 }
 
 function PrivateRoute({ component: Component, ...rest }: any) {
