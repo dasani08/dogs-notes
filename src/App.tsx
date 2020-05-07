@@ -69,6 +69,19 @@ function Note(props: any) {
   );
 }
 
+const parseNote = (note: string) => {
+  // First line -> title
+  const title = note.substring(0, note.search(/\n/));
+  // match /#[a-zA-Z0-9]+/g -> tags
+  const tags = note.match(/#[a-zA-Z0-9]+/g);
+  console.log(title);
+  return {
+    title,
+    body: note,
+    tags,
+  };
+};
+
 const Notes = withRouter((props: any) => {
   const [notes, setNotes] = useState<any[]>([]);
 
@@ -145,9 +158,7 @@ const AddNote = withRouter((props) => {
     firebase
       .firestore()
       .collection('notes')
-      .add({
-        body: note,
-      })
+      .add(parseNote(note))
       .then(() => props.history.push('/'))
       .catch((error) => {
         alert(`Error writing note: ${error}`);
@@ -183,16 +194,12 @@ function DetailNote() {
     if (tmpNotes.trim() === '') {
       return;
     }
+
     firebase
       .firestore()
       .collection('notes')
       .doc(id)
-      .set(
-        {
-          body: tmpNotes,
-        },
-        { merge: true }
-      )
+      .set(parseNote(tmpNotes), { merge: true })
       .then(() => alert('Saved!'))
       .catch((error) => {
         alert(`Error writing note: ${error}`);
